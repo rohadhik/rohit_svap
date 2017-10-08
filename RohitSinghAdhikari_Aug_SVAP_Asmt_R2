@@ -1,0 +1,127 @@
+---
+title: "RohitSinghAdhikari_Aug_SVAP_Asmt_R2"
+author: "Rohit Singh Adhikari"
+date: "October 5, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Loading Package:
+```{r}
+library(rvest)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+## Frame 
+1st part - What is the highest value of Cisco share and when?
+2nd part - Predict the daily price for the next 10 days for the cisco share.
+
+#Acquire
+Getting Cisco share data for last five years of all month from Yahoo 
+```{r}
+getwd()
+setwd("C:/LaptopData/PGPBDA-2017/SVAP Class/Assignment/LabAssignment")
+mydata <- read.csv("CSCO.csv",sep=',', header = TRUE)
+str(mydata)
+head(mydata)
+df <- mydata
+```
+# Refine
+-Quality and consistency
+-Missing
+-Outliers
+-remove uneeded
+-Format data type
+
+```{r}
+dim(df)
+str(df)
+#assign the variables in new variable names
+column_name <- c('date','open','high','low','close','adj.close','volume')
+colnames(df) <- column_name
+str(df)
+#Mutate the date and separate it into year, month and day
+df1 <- df %>% 
+  mutate(date1=date) %>%
+  separate(date,c("year","month","day"), sep="-") 
+
+str(df1)
+#convert the year,month and day value to numeric(dfl) from character
+df1$year <- as.numeric(df1$year)
+df1$month <- as.numeric(df1$month)
+df1$day <- as.numeric(df1$day)
+#convert the date format
+df1$date1 <- as.Date(df1$date1, format = "%Y-%m-%d")
+str(df1)
+df2 <- df1
+str(df2)
+```
+```{r}
+#check the open, high, low and close value with 0
+filter(df2,(df2$open==0))
+filter(df2,(df2$high==0))
+filter(df2,(df2$low==0))
+filter(df2,(df2$close==0))
+head(df2)
+tail(df2)
+```
+```{r}
+#Check the highest value of cisco share and when?
+df2  %>%
+    arrange(desc(close)) %>%
+  head(20)
+df2  %>%
+    arrange(desc(close)) %>%
+  head(20)%>% ggplot(aes(reorder(date1, close),close, fill=close)) + geom_point (width = 10) + coord_flip()
+
+#Answer of Question 1: Cisco share highest value is 34.44 on 1st March 2017
+```
+
+
+```{r}
+#Check the time series graph for the share value of cisco on daily basis 
+
+ggplot(df2,aes(date1, close)) + geom_line() + scale_x_date()  + xlab("Years") + ylab("Share value")
+
+```
+```{r}
+#Check the time series graph for the open and close values of cisco share on daily basis 
+ggplot(df2,aes(date1, open),close) + geom_line(aes(y=open,col = "open value")) + geom_line(aes(y=close,col = "close value")) + scale_x_date()  + xlab("Years") + ylab("Share Value")
+
+```
+
+Build the Model
+```{r}
+dfclose <- df2 %>% 
+  filter(year == "2017") %>%
+  select(date1, close)
+dfclose
+colnames(dfclose) <- c('ds','y')
+library(prophet)
+
+#use library prophet for forecasting
+m <- prophet(dfclose)
+
+future <- make_future_dataframe(m, periods = 5, freq = "day")
+forecast <- predict(m, future)
+#Predicted valuefor next 5 days
+tail(forecast, n = 5)
+max(forecast$trend)
+min(forecast$trend)
+#Plot the graph
+plot(m, forecast)
+
+```
